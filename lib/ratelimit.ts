@@ -22,7 +22,14 @@ const limiter = hasUpstash
 export async function checkRateLimit(
   identifier: string,
 ): Promise<{ success: boolean }> {
-  if (!limiter) return { success: true };
+  if (!limiter) {
+    if (process.env.NODE_ENV === "production") {
+      console.error(
+        "[security] Upstash env vars not set — rate limiting is disabled",
+      );
+    }
+    return { success: true };
+  }
   const { success } = await limiter.limit(identifier);
   return { success };
 }

@@ -2,8 +2,18 @@ import { z } from "zod";
 
 /** Shared validation schema for the contact form (used client + server). */
 export const contactSchema = z.object({
-  name: z.string().trim().min(2, "Please enter your name").max(80),
-  email: z.string().trim().email("Enter a valid email address").max(160),
+  name: z
+    .string()
+    .trim()
+    .min(2, "Please enter your name")
+    .max(80)
+    .regex(/^[^\r\n]*$/, "Invalid characters in name"),
+  email: z
+    .string()
+    .trim()
+    .email("Enter a valid email address")
+    .max(160)
+    .regex(/^[^\r\n]*$/, "Invalid email format"),
   message: z
     .string()
     .trim()

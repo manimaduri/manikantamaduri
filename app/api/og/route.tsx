@@ -5,9 +5,10 @@ export const runtime = "edge";
 
 export function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const title = searchParams.get("title") ?? profile.name;
-  const subtitle =
-    searchParams.get("subtitle") ?? profile.headline;
+  const title = (searchParams.get("title") ?? profile.name).slice(0, 120);
+  const subtitle = (
+    searchParams.get("subtitle") ?? profile.headline
+  ).slice(0, 200);
 
   return new ImageResponse(
     (

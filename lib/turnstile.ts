@@ -8,7 +8,14 @@ export async function verifyTurnstile(
   ip?: string,
 ): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return true; // not configured — skip
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      console.error(
+        "[security] TURNSTILE_SECRET_KEY is not set — bot protection is disabled",
+      );
+    }
+    return true;
+  }
 
   if (!token) return false;
 

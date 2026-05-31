@@ -30,10 +30,11 @@ export function PersonJsonLd({ profile, socials, url }: PersonJsonLdProps) {
       .map((s) => s.href),
   };
 
-  // Escape </script> sequences so they can't break out of the script tag.
+  // Escape characters that can break out of or interfere with a <script> tag.
   const safe = JSON.stringify(json)
-    .replace(/</g, "\\u003c")
-    .replace(/\//g, "\\u002f");
+    .replace(/&/g, "&")
+    .replace(/</g, "<")
+    .replace(/>/g, ">");
 
   return (
     <script
