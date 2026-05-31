@@ -10,14 +10,19 @@ const hasUpstash =
   !!process.env.UPSTASH_REDIS_REST_URL &&
   !!process.env.UPSTASH_REDIS_REST_TOKEN;
 
-const limiter = hasUpstash
-  ? new Ratelimit({
+let limiter: Ratelimit | null = null;
+if (hasUpstash) {
+  try {
+    limiter = new Ratelimit({
       redis: Redis.fromEnv(),
       limiter: Ratelimit.slidingWindow(5, "1 h"),
       prefix: "portfolio:contact",
       analytics: false,
-    })
-  : null;
+    });
+  } catch (e) {
+    console.error("[ratelimit] Failed to initialize Redis — check env var format (no surrounding quotes):", e);
+  }
+}
 
 export async function checkRateLimit(
   identifier: string,

@@ -1,26 +1,106 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { Send, CheckCircle2, AlertCircle, Mail, MapPin } from "lucide-react";
 import { Section, SectionHeading } from "@/components/ui/section";
 import { Reveal } from "@/components/ui/reveal";
 import { Button } from "@/components/ui/button";
 import { submitContact } from "@/app/actions/contact";
-import type { ContactResult } from "@/lib/contact-schema";
+import { contactSchema, type ContactResult } from "@/lib/contact-schema";
 import { profile, socials } from "@/content/data/profile";
 import { SocialIcon } from "@/components/ui/social-icon";
+import { cn } from "@/lib/utils";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+const MESSAGE_MAX = 3000;
 
-const fieldClass =
-  "w-full rounded-xl border border-border bg-surface/50 px-4 py-3 text-sm text-foreground placeholder:text-faint transition-colors focus:border-accent/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent/30";
+type Field = "name" | "email" | "message";
+
+function inputClass(hasError: boolean) {
+  return cn(
+    "w-full rounded-xl border bg-surface/50 px-4 py-3 text-sm text-foreground placeholder:text-faint transition-colors focus:bg-surface focus:outline-none focus:ring-2",
+    hasError
+      ? "border-red-500/50 focus:border-red-500/60 focus:ring-red-500/20"
+      : "border-border focus:border-accent/60 focus:ring-accent/30",
+  );
+}
 
 export function Contact() {
   const [state, formAction, isPending] = useActionState<
     ContactResult | null,
     FormData
   >(submitContact, null);
+
+  const [values, setValues] = useState<Record<Field, string>>({
+    name: "",
+    email: "",
+    message: "",
+  });
+  const [clientErrors, setClientErrors] = useState<Partial<Record<Field, string>>>({});
+  const [touched, setTouched] = useState<Partial<Record<Field, boolean>>>({});
+  // true when Turnstile is not configured (local dev) or after user passes it
+  const [turnstileReady, setTurnstileReady] = useState(!TURNSTILE_SITE_KEY);
+  const [turnstileError, setTurnstileError] = useState(false);
+
+  function validateField(field: Field, value: string): string | undefined {
+    const result = contactSchema.shape[field].safeParse(value.trim());
+    return result.success ? undefined : result.error.issues[0]?.message;
+  }
+
+  function validateAll(): Partial<Record<Field, string>> {
+    const errs: Partial<Record<Field, string>> = {};
+    for (const field of ["name", "email", "message"] as const) {
+      const err = validateField(field, values[field]);
+      if (err) errs[field] = err;
+    }
+    return errs;
+  }
+
+  function handleChange(field: Field, value: string) {
+    setValues((prev) => ({ ...prev, [field]: value }));
+    if (touched[field]) {
+      setClientErrors((prev) => ({
+        ...prev,
+        [field]: validateField(field, value),
+      }));
+    }
+  }
+
+  function handleBlur(field: Field) {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    setClientErrors((prev) => ({
+      ...prev,
+      [field]: validateField(field, values[field]),
+    }));
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    // Touch all fields so every error becomes visible
+    setTouched({ name: true, email: true, message: true });
+    const errs = validateAll();
+    setClientErrors(errs);
+
+    if (Object.keys(errs).length > 0) {
+      e.preventDefault();
+      return;
+    }
+
+    if (TURNSTILE_SITE_KEY && !turnstileReady) {
+      e.preventDefault();
+      setTurnstileError(true);
+      return;
+    }
+  }
+
+  // Merge server-side field errors with client-side ones (server wins on overlap)
+  const serverFieldErrors =
+    state && !state.ok ? (state.fieldErrors ?? {}) : {};
+  function fieldError(field: Field): string | undefined {
+    return serverFieldErrors[field] ?? clientErrors[field];
+  }
+
+  const charsLeft = MESSAGE_MAX - values.message.length;
 
   return (
     <Section id="contact">
@@ -79,9 +159,17 @@ export function Contact() {
                 </p>
               </div>
             ) : (
-              <form action={formAction} className="space-y-4" noValidate>
-                {/* Honeypot — visually hidden, off accessibility tree */}
-                <div aria-hidden className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+              <form
+                action={formAction}
+                onSubmit={handleSubmit}
+                className="space-y-4"
+                noValidate
+              >
+                {/* Honeypot */}
+                <div
+                  aria-hidden
+                  className="absolute -left-[9999px] h-0 w-0 overflow-hidden"
+                >
                   <label>
                     Company
                     <input
@@ -94,6 +182,7 @@ export function Contact() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Name */}
                   <div>
                     <label htmlFor="name" className="sr-only">
                       Name
@@ -102,11 +191,16 @@ export function Contact() {
                       id="name"
                       name="name"
                       placeholder="Your name"
-                      required
-                      className={fieldClass}
+                      value={values.name}
+                      onChange={(e) => handleChange("name", e.target.value)}
+                      onBlur={() => handleBlur("name")}
+                      className={inputClass(!!fieldError("name"))}
+                      autoComplete="name"
                     />
-                    <FieldError state={state} field="name" />
+                    <FieldError msg={fieldError("name")} />
                   </div>
+
+                  {/* Email */}
                   <div>
                     <label htmlFor="email" className="sr-only">
                       Email
@@ -116,13 +210,17 @@ export function Contact() {
                       name="email"
                       type="email"
                       placeholder="you@email.com"
-                      required
-                      className={fieldClass}
+                      value={values.email}
+                      onChange={(e) => handleChange("email", e.target.value)}
+                      onBlur={() => handleBlur("email")}
+                      className={inputClass(!!fieldError("email"))}
+                      autoComplete="email"
                     />
-                    <FieldError state={state} field="email" />
+                    <FieldError msg={fieldError("email")} />
                   </div>
                 </div>
 
+                {/* Message */}
                 <div>
                   <label htmlFor="message" className="sr-only">
                     Message
@@ -132,26 +230,64 @@ export function Contact() {
                     name="message"
                     rows={5}
                     placeholder="Tell me about your project or role…"
-                    required
-                    className={`${fieldClass} resize-none`}
+                    value={values.message}
+                    onChange={(e) => handleChange("message", e.target.value)}
+                    onBlur={() => handleBlur("message")}
+                    className={`${inputClass(!!fieldError("message"))} resize-none`}
                   />
-                  <FieldError state={state} field="message" />
+                  <div className="mt-1 flex items-start justify-between gap-2">
+                    <FieldError msg={fieldError("message")} />
+                    <span
+                      className={cn(
+                        "ml-auto shrink-0 text-xs tabular-nums",
+                        charsLeft < 200 ? "text-amber-400" : "text-faint",
+                        charsLeft < 0 && "text-red-400",
+                      )}
+                    >
+                      {values.message.length}/{MESSAGE_MAX}
+                    </span>
+                  </div>
                 </div>
 
+                {/* Turnstile */}
                 {TURNSTILE_SITE_KEY ? (
-                  <Turnstile
-                    siteKey={TURNSTILE_SITE_KEY}
-                    options={{ theme: "dark" }}
-                  />
+                  <div>
+                    <Turnstile
+                      siteKey={TURNSTILE_SITE_KEY}
+                      options={{ theme: "dark" }}
+                      onSuccess={() => {
+                        setTurnstileReady(true);
+                        setTurnstileError(false);
+                      }}
+                      onError={() => {
+                        setTurnstileReady(false);
+                        setTurnstileError(true);
+                      }}
+                      onExpire={() => {
+                        setTurnstileReady(false);
+                        setTurnstileError(false);
+                      }}
+                    />
+                    {turnstileError && (
+                      <p className="mt-1.5 text-xs text-red-400">
+                        Please complete the verification above before sending.
+                      </p>
+                    )}
+                  </div>
                 ) : null}
 
-                {state && !state.ok ? (
+                {/* Server-level error */}
+                {state && !state.ok && !state.fieldErrors ? (
                   <p className="inline-flex items-center gap-2 text-sm text-red-400">
                     <AlertCircle className="size-4" /> {state.error}
                   </p>
                 ) : null}
 
-                <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  className="w-full sm:w-auto"
+                >
                   {isPending ? "Sending…" : "Send message"}
                   <Send className="size-4" />
                 </Button>
@@ -164,14 +300,12 @@ export function Contact() {
   );
 }
 
-function FieldError({
-  state,
-  field,
-}: {
-  state: ContactResult | null;
-  field: string;
-}) {
-  const msg = state && !state.ok ? state.fieldErrors?.[field] : undefined;
+function FieldError({ msg }: { msg: string | undefined }) {
   if (!msg) return null;
-  return <p className="mt-1.5 text-xs text-red-400">{msg}</p>;
+  return (
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-red-400">
+      <AlertCircle className="size-3 shrink-0" />
+      {msg}
+    </p>
+  );
 }
