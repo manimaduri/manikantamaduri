@@ -89,10 +89,4 @@ function doPost(e) {
 Deploy as a Web App (execute as you, access: anyone) and put the `/exec` URL in
 `GOOGLE_SHEETS_WEBHOOK_URL`.
 
-## Remaining content TODOs
 
-- Real GitHub & LinkedIn URLs in `content/data/profile.ts`
-- Project links (esp. Aaxiomcrest Smart School Play Store URL) in `projects.ts`
-- Project thumbnail images under `public/projects/` (cards/detail currently
-  render text-only — wire `project.image` when added)
-- Custom domain in Vercel + `NEXT_PUBLIC_SITE_URL`
