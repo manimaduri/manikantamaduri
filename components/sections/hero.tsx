@@ -7,20 +7,70 @@ import { LinkButton } from "@/components/ui/button";
 import { SocialIcon } from "@/components/ui/social-icon";
 import { Typewriter } from "./typewriter";
 
+const FLOATING_CHIPS = [
+  { label: "Next.js", delay: "0s" },
+  { label: "Django", delay: "1s" },
+  { label: "RAG + LLM", delay: "0.5s" },
+  { label: "React Native", delay: "1.8s" },
+  { label: "PostgreSQL", delay: "2.4s" },
+  { label: "Neo4j", delay: "1.2s" },
+] as const;
+
 export function Hero() {
   const reduce = useReducedMotion();
 
   return (
     <section
       id="top"
-      className="relative overflow-hidden px-5 py-12 sm:px-8 "
+      className="relative overflow-hidden px-5 py-12 sm:px-8"
     >
-      {/* Decorative animated gradient orb */}
+      {/* Dot grid background */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(255,255,255,0.055) 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+        }}
+      />
+
+      {/* Primary violet orb — top-center */}
       <div
         aria-hidden
         className="pointer-events-none absolute -top-40 left-1/2 -z-10 h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-accent/20 blur-[120px]"
         style={{ animation: reduce ? undefined : "var(--animate-glow-pulse)" }}
       />
+
+      {/* Secondary pink orb — bottom-right */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-24 right-1/4 -z-10 h-[22rem] w-[22rem] rounded-full bg-accent-3/12 blur-[100px]"
+        style={{
+          animation: reduce ? undefined : "glow-pulse 5s ease-in-out 1s infinite",
+        }}
+      />
+
+      {/* Floating tech chips — large screens only */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 flex-col gap-3 xl:flex"
+      >
+        {FLOATING_CHIPS.map(({ label, delay }) => (
+          <span
+            key={label}
+            className="glass rounded-full px-4 py-2 text-xs font-medium text-muted"
+            style={{
+              animation: reduce
+                ? undefined
+                : `float 4s ease-in-out ${delay} infinite`,
+              opacity: 0.75,
+            }}
+          >
+            {label}
+          </span>
+        ))}
+      </div>
 
       <div className="mx-auto max-w-6xl">
         <motion.div

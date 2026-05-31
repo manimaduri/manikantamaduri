@@ -53,10 +53,10 @@ export function Skills() {
             <li
               key={skill}
               className={cn(
-                "rounded-xl border px-3.5 py-2 text-sm transition-colors",
+                "rounded-xl border px-3.5 py-2 text-sm transition-all duration-300",
                 group.emphasis
-                  ? "border-accent/30 bg-accent-soft text-foreground"
-                  : "border-border bg-surface/50 text-muted hover:text-foreground",
+                  ? "border-accent/30 bg-accent-soft text-foreground hover:border-accent/60 hover:shadow-[var(--shadow-glow)]"
+                  : "border-border bg-surface/50 text-muted hover:border-accent/30 hover:bg-accent-soft/50 hover:text-foreground",
               )}
             >
               {skill}

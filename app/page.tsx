@@ -6,11 +6,13 @@ import { Education } from "@/components/sections/education";
 import { Contact } from "@/components/sections/contact";
 import { Section, SectionHeading } from "@/components/ui/section";
 import { ProjectsGrid } from "@/components/projects/projects-grid";
+import { MarqueeBanner } from "@/components/ui/marquee-banner";
 
 export default function Home() {
   return (
     <>
       <Hero />
+      <MarqueeBanner />
       <About />
       <Skills />
       <Section id="work">
