@@ -46,7 +46,12 @@ export function getAllPosts(): PostMeta[] {
 }
 
 export function getPost(slug: string): Post | null {
+  // Reject slugs with path separators or traversal sequences.
+  if (!/^[a-z0-9_-]+$/i.test(slug)) return null;
+
   const file = path.join(BLOG_DIR, `${slug}.mdx`);
+  // Guard: resolved path must stay inside BLOG_DIR.
+  if (!file.startsWith(BLOG_DIR + path.sep) && file !== BLOG_DIR) return null;
   if (!fs.existsSync(file)) return null;
   const raw = fs.readFileSync(file, "utf8");
   const { data, content } = matter(raw);

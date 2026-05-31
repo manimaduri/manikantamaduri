@@ -30,11 +30,15 @@ export function PersonJsonLd({ profile, socials, url }: PersonJsonLdProps) {
       .map((s) => s.href),
   };
 
+  // Escape </script> sequences so they can't break out of the script tag.
+  const safe = JSON.stringify(json)
+    .replace(/</g, "\\u003c")
+    .replace(/\//g, "\\u002f");
+
   return (
     <script
       type="application/ld+json"
-      // JSON is fully controlled by us — safe to inject.
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(json) }}
+      dangerouslySetInnerHTML={{ __html: safe }}
     />
   );
 }
