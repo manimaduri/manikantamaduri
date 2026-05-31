@@ -1,0 +1,60 @@
+---
+title: "Building Production RAG Pipelines That Actually Work"
+summary: "Lessons from shipping retrieval-augmented generation for enterprise document intelligence — chunking, hybrid search, and grounding answers you can trust."
+date: "2026-05-15"
+tags: ["Gen AI", "RAG", "Vector Search"]
+---
+
+Retrieval-augmented generation looks deceptively simple in a demo: embed some
+documents, drop them in a vector store, retrieve the top-k, and let the model
+answer. Shipping it for real enterprise documents — invoices, contracts,
+scanned PDFs, emails — is a different sport.
+
+Here are the things that actually moved the needle when building document
+intelligence at scale.
+
+## Chunking is a product decision, not a default
+
+The naive "split every 1,000 characters" approach destroys meaning. Tables get
+cut in half, clauses lose their context, and the model retrieves confident
+nonsense. What worked better:
+
+- **Structure-aware splitting** — respect headings, tables, and list
+  boundaries instead of raw character counts.
+- **Overlap with intent** — a small overlap preserves cross-boundary context
+  without bloating the index.
+- **Metadata on every chunk** — source, page, section, and document type, so
+  retrieval can be filtered and answers can cite.
+
+## Hybrid search beats pure vectors
+
+Dense vectors are great at semantics and terrible at exact matches — invoice
+numbers, SKUs, names. Combining **keyword (BM25 / Elastic) with vector
+similarity** and re-ranking the merged set consistently retrieved the right
+context where either method alone failed.
+
+## Ground every answer
+
+The single biggest trust win was forcing the model to answer **only from
+retrieved context** and to **cite the source chunk**. If the context doesn't
+contain the answer, the right response is "I don't have that information" — not
+a fluent hallucination.
+
+```ts
+const answer = await llm.complete({
+  system: "Answer ONLY from the provided context. Cite sources. If unknown, say so.",
+  context: retrieved.map((c) => `[${c.source} p${c.page}] ${c.text}`).join("\n"),
+  question,
+});
+```
+
+## Measure retrieval, not just generation
+
+It's tempting to eyeball the final answer. But most RAG failures are
+**retrieval failures**. Tracking retrieval hit-rate against a labelled set of
+questions told us where to fix chunking and ranking long before users noticed.
+
+---
+
+RAG isn't magic — it's a search problem wearing an LLM costume. Get retrieval
+right and the generation mostly takes care of itself.
